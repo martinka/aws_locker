@@ -4,6 +4,7 @@ python program for encrypting local aws access keys while allowing run time acce
 program allows you to encrypt the ~/.aws/credentials file.
 
 Running on Mac OS:
+==================
 make sure requirements are loaded:
     pip install -r resources.txt
 
@@ -20,6 +21,7 @@ decrypt the file - return the credential file to normal
     python aws_locker.py -d
 
 Running on Windows:
+===================
 Running on windows is a bit more complicated.
   First step is to ensure python 2.7 is loaded.  By default it is loaded in C:/Python2.7
   Then make sure you have visual C++ compiler for python.  You can get it here: https://www.microsoft.com/en-us/download/details.aspx?id=44266
