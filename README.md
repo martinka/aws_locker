@@ -3,6 +3,10 @@ python program for encrypting local aws access keys while allowing run time acce
 
 program allows you to encrypt the ~/.aws/credentials file.
 
+Before you Start:
+=================
+It is always a good idea to backup you aws credentials someplace off line. This program will encrypt you credentials. If you forget the pass key there is no way to recover them. 
+
 Running on Mac OS:
 ==================
 make sure requirements are loaded:
