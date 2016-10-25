@@ -32,3 +32,6 @@ Running on windows is a bit more complicated.
 
 This program makes use of the fact that aws cli will use environment variables for the access key id and access key secret.  The environment variables are not secure, however they are only available while the program is running.  This reduces the exposure of the access keys, however it is not a prefect solution.  It does protect your keys while not in use.  
 
+Acknowledgements
+================
+Thank you to Darby Mullen, Adam Browning and Rob Muir for inspirtation and initial code review.
