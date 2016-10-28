@@ -26,19 +26,19 @@ from Crypto.Util import Counter
 
 salt_size = 12
 
-mac_credentials_file = "~/.aws/credentials"
-mac_encrypted_path = "~/.aws/enc_credentials"
+credentials_file = "~/.aws/credentials"
+encrypted_path = "~/.aws/enc_credentials"
 
 def convert_passphrase_to_key(salt, pass_phrase):
     return PBKDF2(pass_phrase, salt, dkLen=32)
 
 
 def get_cred_file():
-    return os.path.expanduser(mac_credentials_file)
+    return os.path.expanduser(credentials_file)
 
 
 def get_enc_cred_file():
-    return os.path.expanduser(mac_encrypted_path)
+    return os.path.expanduser(encrypted_path)
 
 
 def activate_keys(pass_phrase, profile):
@@ -154,7 +154,7 @@ def profile_check():
     :return:
     """
     # default profile
-    if not os.path.exists(mac_encrypted_path):
+    if not os.path.exists( get_enc_cred_file()):
         sys.stderr.write("Encrypted credential file not found, create an encrypted file" + os.linesep)
         sys.stderr.write(usage)
         exit()
