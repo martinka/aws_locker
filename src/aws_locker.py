@@ -26,17 +26,19 @@ from Crypto.Util import Counter
 
 salt_size = 12
 
+mac_credentials_file = "~/.aws/credentials"
+mac_encrypted_path = "~/.aws/enc_credentials"
 
 def convert_passphrase_to_key(salt, pass_phrase):
     return PBKDF2(pass_phrase, salt, dkLen=32)
 
 
 def get_cred_file():
-    return os.path.expanduser("~/.aws/credentials")
+    return os.path.expanduser(mac_credentials_file)
 
 
 def get_enc_cred_file():
-    return os.path.expanduser("~/.aws/enc_credentials")
+    return os.path.expanduser(mac_encrypted_path)
 
 
 def activate_keys(pass_phrase, profile):
@@ -146,24 +148,53 @@ def decrypt_file(pass_phrase, in_filename, out_filename):
     os.unlink(in_filename)
 
 
-if __name__ == '__main__':
-    if len(sys.argv) < 1 or len(sys.argv) > 3:
-        print("usage: aws_locker [-e,-d,-p profile]")
+def profile_check():
+    """
+    This function checks whether the encrypted credential file exists or not and then exits if missing
+    :return:
+    """
+    # default profile
+    if not os.path.exists(mac_encrypted_path):
+        sys.stderr.write("Encrypted credential file not found, create an encrypted file" + os.linesep)
+        sys.stderr.write(usage)
         exit()
-    pass_phrase_in = getpass.getpass('enter pass phrase>')
+
+def get_password():
+    """
+    This function prompts the user for their password and returns it to the calling function
+    :return: The user's password
+    """
+    pass_phrase_in = getpass.getpass('enter pass phrase >>')
 
     # strip newline of pass_phrase
-    pass_phrase_in = pass_phrase_in.rstrip()
+    return pass_phrase_in.rstrip()
 
-    if len(sys.argv) == 2 and sys.argv[1] == '-e':
-        print("encrypting the cred file\n")
-        encrypt_file(pass_phrase_in, get_cred_file(), get_enc_cred_file())
-    elif len(sys.argv) == 2 and sys.argv[1] == '-d':
-        print("decrypting the cred file\n")
-        decrypt_file(pass_phrase_in, get_enc_cred_file(), get_cred_file())
-    elif len(sys.argv) == 3 and sys.argv[1] == '-p':
-        print("activating profile")
-        activate_keys(pass_phrase_in, sys.argv[2])
+
+
+if __name__ == '__main__':
+    usage = "Usage: aws_locker [-e,-d,-p profile]" + os.linesep
+    if len(sys.argv) < 1 or len(sys.argv) > 3:
+        sys.stderr.write(usage)
+        exit()
+
+    num_args = len(sys.argv)
+
+    if num_args == 2 and sys.argv[1] == '-e':
+        encrypt_file(get_password(), get_cred_file(), get_enc_cred_file())
+        print("credentials file encrypted" + os.linesep)
+    elif num_args == 2 and sys.argv[1] == '-d':
+        profile_check()
+        decrypt_file(get_password(), get_enc_cred_file(), get_cred_file())
+        print("credentials file decrypted" + os.linesep)
+    elif num_args == 3 and sys.argv[1] == '-p':
+        profile_check()
+        # TODO, not sure the thought here
+        print("Not implemented")
+        #profile_name = sys.argv[2]
+        #print("Attempting to activate " + profile_name)
+        #activate_keys(get_password(), profile_name)
     else:
-        print("activating default profile\n")
-        activate_keys(pass_phrase_in, "default")
+        print("Attempting to load default profile")
+        profile_check()
+        activate_keys(get_password(), "default")
+        print("Successfully activated default profile" + os.linesep)
