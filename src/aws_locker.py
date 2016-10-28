@@ -188,11 +188,9 @@ if __name__ == '__main__':
         print("credentials file decrypted" + os.linesep)
     elif num_args == 3 and sys.argv[1] == '-p':
         profile_check()
-        # TODO, not sure the thought here
-        print("Not implemented")
-        #profile_name = sys.argv[2]
-        #print("Attempting to activate " + profile_name)
-        #activate_keys(get_password(), profile_name)
+        profile_name = sys.argv[2]
+        print("Attempting to activate " + profile_name)
+        activate_keys(get_password(), profile_name)
     else:
         print("Attempting to load default profile")
         profile_check()
