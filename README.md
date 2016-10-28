@@ -38,4 +38,4 @@ This program makes use of the fact that aws cli will use environment variables f
 
 Acknowledgements
 ================
-Thank you to Darby Mullen, Adam Browning and Rob Muir for inspirtation and initial code review.
+Thank you to [darbym](https://github.com/darbym), [adbrowning](https://github.com/adbrowning) and [rmuir](https://github.com/rmuir) for inspirtation and initial code review.
