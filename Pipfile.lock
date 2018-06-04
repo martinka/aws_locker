@@ -1,0 +1,28 @@
+{
+    "_meta": {
+        "hash": {
+            "sha256": "cf85c4bde1c57c1d2c878a320238a45bb658e14ed326c66783fc67b19f48e982"
+        },
+        "pipfile-spec": 6,
+        "requires": {
+            "python_version": "2.7"
+        },
+        "sources": [
+            {
+                "name": "pypi",
+                "url": "https://artifactory.programx60.com/api/pypi/pypi-remote/simple",
+                "verify_ssl": true
+            }
+        ]
+    },
+    "default": {
+        "pycrypto": {
+            "hashes": [
+                "sha256:f2ce1e989b272cfcb677616763e0a2e7ec659effa67a88aa92b3a65528f60a3c"
+            ],
+            "index": "pypi",
+            "version": "==2.6.1"
+        }
+    },
+    "develop": {}
+}
