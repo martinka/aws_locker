@@ -39,3 +39,11 @@ This program makes use of the fact that aws cli will use environment variables f
 Acknowledgements
 ================
 Thank you to [darbym](https://github.com/darbym), [adbrowning](https://github.com/adbrowning) and [rmuir](https://github.com/rmuir) for inspirtation and initial code review.
+
+
+Future Plans
+============
+The following enchancements are planed for aws_locker
+  - support for command history and type ahead. possibly leverage the shell for this.
+  - unit tests
+  - builds for .app and .exe versions
