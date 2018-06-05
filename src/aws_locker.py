@@ -29,6 +29,7 @@ salt_size = 12
 credentials_file = "~/.aws/credentials"
 encrypted_path = "~/.aws/enc_credentials"
 
+
 def convert_passphrase_to_key(salt, pass_phrase):
     return PBKDF2(pass_phrase, salt, dkLen=32)
 
@@ -41,7 +42,12 @@ def get_enc_cred_file():
     return os.path.expanduser(encrypted_path)
 
 
-def activate_keys(pass_phrase, profile):
+def get_credentials(pass_phrase):
+    """
+    This function takes a pass_phrase and returns the credentials file as a list
+    :param pass_phrase: PassPhrase used to secure the credentials
+    :return: The lines of the credentials file as a list
+    """
     # read the file
     filename = get_enc_cred_file()
     with open(filename, 'r') as f:
@@ -56,6 +62,23 @@ def activate_keys(pass_phrase, profile):
     cipher = AES.new(key, AES.MODE_CTR, counter=ctr)
     cred_data = cipher.decrypt(enc_cred_data)
     cred_lines = cred_data.splitlines()
+    return cred_lines
+
+
+def list_profiles(pass_phrase):
+    """
+    Opens the encrypted credentials file and prints out the names of the profiles, no keys
+    :param pass_phrase: PassPhrase used to secure the credentials
+    :return: None
+    """
+    cred_lines = get_credentials(pass_phrase)
+    for line in cred_lines:
+        if "[" in line and "]" in line:
+            print(line)
+
+
+def activate_keys(pass_phrase, profile):
+    cred_lines = get_credentials(pass_phrase)
 
     # find the start of the profile
     profile_idx = 0
@@ -67,7 +90,7 @@ def activate_keys(pass_phrase, profile):
 
     # find the aws access key
     access_key_idx = profile_idx
-    while 'aws_access_key_id =' not in cred_lines[access_key_idx] and access_key_idx < len(cred_lines):
+    while 'aws_access_key_id' not in cred_lines[access_key_idx] and access_key_idx < len(cred_lines):
         access_key_idx += 1
 
     if access_key_idx >= len(cred_lines):
@@ -75,19 +98,28 @@ def activate_keys(pass_phrase, profile):
 
     # find the aws secret key
     secret_key_idx = profile_idx
-    while 'aws_secret_access_key =' not in cred_lines[secret_key_idx] and secret_key_idx < len(cred_lines):
+    while 'aws_secret_access_key' not in cred_lines[secret_key_idx] and secret_key_idx < len(cred_lines):
         secret_key_idx += 1
 
     if secret_key_idx >= len(cred_lines):
         raise ValueError('aws_secret_acces_key not found')
 
-    # extract the values
-    start = len('aws_access_key_id =') + 1
-    access_key = cred_lines[access_key_idx][start:]
-
-    start = len('aws_secret_access_key =') + 1
-    secret_key = cred_lines[secret_key_idx][start:]
-
+    # extract the aws_access_key_id
+    tokens = cred_lines[access_key_idx].split("=")
+    if len(tokens) != 2:
+        raise ValueError('aws_access_key_id entry not well formed, '
+                         'e.g. aws_access_key_id=AKIAIOSFODNN7EXAMPLE')
+    # remove any white space
+    access_key = tokens[1].strip()
+    
+    # extract the aws_secret_access_key
+    tokens = cred_lines[secret_key_idx].split("=")
+    if len(tokens) != 2:
+        raise ValueError('aws_secret_access_key entry not well formed, '
+                         'e.g. aws_secret_access_key=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY')
+    # remove any white space
+    secret_key = tokens[1].strip()
+    
     # set the environment variables
     os.environ['AWS_ACCESS_KEY_ID'] = access_key
     os.environ['AWS_SECRET_ACCESS_KEY'] = secret_key
@@ -95,7 +127,7 @@ def activate_keys(pass_phrase, profile):
     # main command line loop
     cmd = ""
     while cmd != 'exit':
-        sys.stdout.write('>')
+        sys.stdout.write('> ')
         cmd = sys.stdin.readline()
         # strip newline off cmd
         cmd = cmd.strip()
@@ -154,10 +186,11 @@ def profile_check():
     :return:
     """
     # default profile
-    if not os.path.exists( get_enc_cred_file()):
+    if not os.path.exists(get_enc_cred_file()):
         sys.stderr.write("Encrypted credential file not found, create an encrypted file" + os.linesep)
         sys.stderr.write(usage)
         exit()
+
 
 def get_password():
     """
@@ -170,9 +203,18 @@ def get_password():
     return pass_phrase_in.rstrip()
 
 
-
 if __name__ == '__main__':
-    usage = "Usage: aws_locker [-e,-d,-p profile]" + os.linesep
+    usage = "Usage: aws_locker [-e,-d,-l,-p profile]" + os.linesep + "" \
+            "If no operands are given, the \"default\" profile credentials are loaded.  " + os.linesep + "" \
+            "The following options are available:" + os.linesep + os.linesep + "" \
+            "-h    prints this message" + os.linesep + "" \
+            "-e    encrypt the " + credentials_file + " file and write information to " + encrypted_path \
+            + os.linesep + "" \
+            "-d    decrypt the " + encrypted_path + " file and write information to " + credentials_file \
+            + os.linesep + "" \
+            "-l    list all profile_names stored in the " + encrypted_path + " file " + os.linesep + "" \
+            "-p    activate a specific profile_name from the " + encrypted_path + " file " + os.linesep
+
     if len(sys.argv) < 1 or len(sys.argv) > 3:
         sys.stderr.write(usage)
         exit()
@@ -182,17 +224,25 @@ if __name__ == '__main__':
     if num_args == 2 and sys.argv[1] == '-e':
         encrypt_file(get_password(), get_cred_file(), get_enc_cred_file())
         print("credentials file encrypted" + os.linesep)
+    elif num_args == 2 and sys.argv[1] == '-h':
+        sys.stdout.write(usage)
+        sys.exit(0)
     elif num_args == 2 and sys.argv[1] == '-d':
         profile_check()
         decrypt_file(get_password(), get_enc_cred_file(), get_cred_file())
         print("credentials file decrypted" + os.linesep)
+    elif num_args == 2 and sys.argv[1] == '-l':
+        profile_check()
+        list_profiles(get_password())
+
     elif num_args == 3 and sys.argv[1] == '-p':
         profile_check()
         profile_name = sys.argv[2]
         print("Attempting to activate " + profile_name)
         activate_keys(get_password(), profile_name)
+        print("Successfully deactivated " + profile_name + " profile" + os.linesep)
     else:
         print("Attempting to load default profile")
         profile_check()
         activate_keys(get_password(), "default")
-        print("Successfully activated default profile" + os.linesep)
+        print("Successfully deactivated default profile" + os.linesep)
