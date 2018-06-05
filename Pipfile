@@ -1,5 +1,5 @@
 [[source]]
-url = "https://artifactory.programx60.com/api/pypi/pypi-remote/simple"
+url = "https://pypi.org/simple"
 verify_ssl = true
 name = "pypi"
 
