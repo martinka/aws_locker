@@ -126,16 +126,7 @@ def activate_keys(pass_phrase, profile):
     os.environ['AWS_SECRET_ACCESS_KEY'] = secret_key
     os.environ['PS1'] = 'aws:' + profile + '>'
 
-    # main command line loop
-    # cmd = ""
-    # while cmd != 'exit':
-    #    sys.stdout.write('> ')
-    #    cmd = sys.stdin.readline()
-    #    # strip newline off cmd
-    #    cmd = cmd.strip()
-    #    if cmd != 'exit':
-    #        os.system(cmd)
-    
+    # fork a shell  
     shell = subprocess.Popen(args="/bin/bash",executable='/bin/bash',
                              stdin=sys.stdin, stdout=sys.stdout, 
                              stderr=sys.stderr)
