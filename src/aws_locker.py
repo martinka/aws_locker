@@ -20,6 +20,7 @@ OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 import os
 import sys
 import getpass
+import subprocess
 from Crypto.Protocol.KDF import PBKDF2
 from Crypto.Cipher import AES
 from Crypto.Util import Counter
@@ -123,16 +124,13 @@ def activate_keys(pass_phrase, profile):
     # set the environment variables
     os.environ['AWS_ACCESS_KEY_ID'] = access_key
     os.environ['AWS_SECRET_ACCESS_KEY'] = secret_key
+    os.environ['PS1'] = 'aws:' + profile + '>'
 
-    # main command line loop
-    cmd = ""
-    while cmd != 'exit':
-        sys.stdout.write('> ')
-        cmd = sys.stdin.readline()
-        # strip newline off cmd
-        cmd = cmd.strip()
-        if cmd != 'exit':
-            os.system(cmd)
+    # fork a shell  
+    shell = subprocess.Popen(args="/bin/bash",executable='/bin/bash',
+                             stdin=sys.stdin, stdout=sys.stdout, 
+                             stderr=sys.stderr)
+    shell.wait() 
 
 
 def encrypt_file(pass_phrase, in_filename, out_filename):
