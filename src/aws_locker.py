@@ -110,8 +110,9 @@ def load_profiles(cred_lines):
 
     # validate all profiles have correct entries, delete ones without
     for profile in profiles:
-        if "aws_access_key_id" not in profiles[profile] or \
-                        "aws_access_key_id" not in profiles[profiles]:
+
+        if "aws_access_key_id" not in profiles[profile] and "aws_secret_access_key" not in profiles[profile]:
+            print(profiles[profile])
             sys.stderr.write("Profile appears corrupt or password is invalid." + os.linesep)
             raise ValueError("ERROR: failed to load profile: " + profile)
 
