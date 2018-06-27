@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "cf85c4bde1c57c1d2c878a320238a45bb658e14ed326c66783fc67b19f48e982"
+            "sha256": "8508a6da648b57faa6bfe9edb9d5d0fe49b53df7a4405530cdaa787e7f35960b"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -10,7 +10,7 @@
         "sources": [
             {
                 "name": "pypi",
-                "url": "https://artifactory.programx60.com/api/pypi/pypi-remote/simple",
+                "url": "https://pypi.org/simple",
                 "verify_ssl": true
             }
         ]

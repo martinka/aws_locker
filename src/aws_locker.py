@@ -21,6 +21,7 @@ import os
 import sys
 import getpass
 import subprocess
+import collections
 from Crypto.Protocol.KDF import PBKDF2
 from Crypto.Cipher import AES
 from Crypto.Util import Counter
@@ -66,65 +67,120 @@ def get_credentials(pass_phrase):
     return cred_lines
 
 
-def list_profiles(pass_phrase):
+def load_profiles(cred_lines):
+    """
+     Returns a dictionary of profile_name to dictionary of aws_access_key_id and aws_secret_access_key
+    :param cred_lines:
+    :return: OrderedDict of profiles
+    """
+    # load the profiles in the order they appear in the credentials file
+    profiles = collections.OrderedDict()
+    for line in cred_lines:
+        # found new profile
+        if "[" in line and "]" in line:
+            profile_name = line
+            profile_name = profile_name.replace("[", "")
+            profile_name = profile_name.replace("]", "")
+            profile_name = profile_name.strip()
+            profiles[profile_name] = collections.OrderedDict()
+        elif "aws_access_key_id" in line:
+            tokens = line.split("=")
+            if len(tokens) != 2:
+                raise ValueError('aws_secret_access_key entry not well formed, '
+                                 'e.g. aws_secret_access_key=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY')
+            # remove any white space
+            profiles[profile_name]["aws_secret_access_key"] = tokens[1].strip()
+
+        elif "aws_access_key_id" in line:
+            # extract the aws_access_key_id
+            tokens = line.split("=")
+            if len(tokens) != 2:
+                raise ValueError('aws_access_key_id entry not well formed, '
+                                 'e.g. aws_access_key_id=AKIAIOSFODNN7EXAMPLE')
+            profiles[profile_name]["aws_secret_access_key"] = tokens[1].strip()
+
+    # if no profiles are loaded perhaps not a valid file or the password was wrong
+    if len(profiles) == 0:
+        # ask again
+        sys.stderr.write("ERROR: Unable to load profiles, please re-enter password." + os.linesep)
+        pass_phrase = get_password()
+        cred_lines = get_credentials(pass_phrase)
+        # convert the list of strings into a dictionary of profiles
+        return load_profiles(cred_lines)
+
+    # validate all profiles have correct entries, delete ones without
+    for profile in profiles:
+        if "aws_access_key_id" not in profiles[profile] or \
+                        "aws_access_key_id" not in profiles[profiles]:
+            sys.stderr.write("Profile appears corrupt or password is invalid." + os.linesep)
+            raise ValueError("ERROR: failed to load profile: " + profile)
+
+    # return the parsed profiles
+    return profiles
+
+
+def list_profiles(profiles):
     """
     Opens the encrypted credentials file and prints out the names of the profiles, no keys
-    :param pass_phrase: PassPhrase used to secure the credentials
+    :param profiles: Dictionary of profiles
     :return: None
     """
-    cred_lines = get_credentials(pass_phrase)
-    for line in cred_lines:
-        if "[" in line and "]" in line:
-            print(line)
+    profile_instance = 0
+    print("Available profiles are:")
+    for profile in profiles:
+        print("[" + str(profile_instance) + "] " + profile)
+        profile_instance += 1
 
 
 def activate_keys(pass_phrase, profile):
+    """
+    Unlocks the credentials file, loads all profiles, prompts the user for profile to choose,
+    finds the requested profile, populates the required environment variables.
+
+    :param pass_phrase:  pass phrase used for the encryption key
+    :param profile: optional profile name to load
+    :return:
+    """
+    # convert the encrypted file to a list of strings
     cred_lines = get_credentials(pass_phrase)
+    # convert the list of strings into a dictionary of profiles
+    profiles = load_profiles(cred_lines)
 
-    # find the start of the profile
-    profile_idx = 0
-    while profile not in cred_lines[profile_idx] and profile_idx < len(cred_lines):
-        profile_idx += 1
+    if profile == "":
+        list_profiles(profiles)
+        selection = None
+        while not isinstance(selection, int):
+            # prompt the user to select a profile from a list
+            selection = get_profile_selection()
+            # if the user hits enter we will use the "default" or "first" profile for them
+            if selection == "":
+                selection = "0"
 
-    if profile_idx >= len(cred_lines):
-        raise ValueError('profile not found')
+            try:
+                # is their selection a number
+                selection = int(selection)
+                if len(profiles) <= selection or selection < 0:
+                    sys.stderr.write("ERROR: Not in the valid range" + os.linesep)
+                    # reset their selection
+                    selection = ""
+                    raise ValueError()
+                else:
+                    # selected our profile
+                    profile = profiles.keys()[selection]
+                    break
+            except ValueError:
+                sys.stderr.write("ERROR: please enter a valid selection" + os.linesep)
+    else:
+        # if the user passed in a specific profile try to use it.
+        if profile not in profiles:
+            sys.stderr.write("ERROR: " + profile + " was not found" + os.linesep)
+            list_profiles(profiles)
+            raise ValueError('Unable to find profile named, ' + profile)
 
-    # find the aws access key
-    access_key_idx = profile_idx
-    while 'aws_access_key_id' not in cred_lines[access_key_idx] and access_key_idx < len(cred_lines):
-        access_key_idx += 1
-
-    if access_key_idx >= len(cred_lines):
-        raise ValueError('aws_access_key_id not found')
-
-    # find the aws secret key
-    secret_key_idx = profile_idx
-    while 'aws_secret_access_key' not in cred_lines[secret_key_idx] and secret_key_idx < len(cred_lines):
-        secret_key_idx += 1
-
-    if secret_key_idx >= len(cred_lines):
-        raise ValueError('aws_secret_acces_key not found')
-
-    # extract the aws_access_key_id
-    tokens = cred_lines[access_key_idx].split("=")
-    if len(tokens) != 2:
-        raise ValueError('aws_access_key_id entry not well formed, '
-                         'e.g. aws_access_key_id=AKIAIOSFODNN7EXAMPLE')
-    # remove any white space
-    access_key = tokens[1].strip()
-    
-    # extract the aws_secret_access_key
-    tokens = cred_lines[secret_key_idx].split("=")
-    if len(tokens) != 2:
-        raise ValueError('aws_secret_access_key entry not well formed, '
-                         'e.g. aws_secret_access_key=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY')
-    # remove any white space
-    secret_key = tokens[1].strip()
-    
     # set the environment variables
-    os.environ['AWS_ACCESS_KEY_ID'] = access_key
-    os.environ['AWS_SECRET_ACCESS_KEY'] = secret_key
-    os.environ['PS1'] = 'aws:' + profile + '>'
+    os.environ['AWS_ACCESS_KEY_ID'] = profiles[profile]["aws_secret_access_key"]
+    os.environ['AWS_SECRET_ACCESS_KEY'] = profiles[profile]["aws_secret_access_key"]
+    os.environ['PS1'] = 'aws:' + profile + '> '
 
     # fork a shell  
     shell = subprocess.Popen(args="/bin/bash",executable='/bin/bash',
@@ -190,20 +246,37 @@ def profile_check():
         exit()
 
 
+def get_profile_selection():
+    """
+    This function prompts the user for their profile selection and returns it
+    :return: Profile name to use
+    """
+    profile_number = raw_input("Enter profile number [default]>> ")
+
+    # strip newline of pass_phrase
+    return profile_number.rstrip()
+
+
 def get_password():
     """
     This function prompts the user for their password and returns it to the calling function
     :return: The user's password
     """
-    pass_phrase_in = getpass.getpass('enter pass phrase >>')
+    pass_phrase_in = getpass.getpass('enter pass phrase >> ')
 
-    # strip newline of pass_phrase
-    return pass_phrase_in.rstrip()
+    pass_phrase_in = pass_phrase_in.rstrip()
+
+    if pass_phrase_in is "":
+        sys.stderr.write("Password cannot be empty, please use a strong pass phrase" + os.linesep)
+        return get_password()
+
+    # Return the collected pass phrase
+    return pass_phrase_in
 
 
 if __name__ == '__main__':
     usage = "Usage: aws_locker [-e,-d,-l,-p profile]" + os.linesep + "" \
-            "If no operands are given, the \"default\" profile credentials are loaded.  " + os.linesep + "" \
+            "If no operands are given, a menu will prompt for which profile to use." + os.linesep + "" \
             "The following options are available:" + os.linesep + os.linesep + "" \
             "-h    prints this message" + os.linesep + "" \
             "-e    encrypt the " + credentials_file + " file and write information to " + encrypted_path \
@@ -229,10 +302,6 @@ if __name__ == '__main__':
         profile_check()
         decrypt_file(get_password(), get_enc_cred_file(), get_cred_file())
         print("credentials file decrypted" + os.linesep)
-    elif num_args == 2 and sys.argv[1] == '-l':
-        profile_check()
-        list_profiles(get_password())
-
     elif num_args == 3 and sys.argv[1] == '-p':
         profile_check()
         profile_name = sys.argv[2]
@@ -242,5 +311,5 @@ if __name__ == '__main__':
     else:
         print("Attempting to load default profile")
         profile_check()
-        activate_keys(get_password(), "default")
+        activate_keys(get_password(), "")
         print("Successfully deactivated default profile" + os.linesep)
