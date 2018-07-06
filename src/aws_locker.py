@@ -89,9 +89,9 @@ def load_profiles(cred_lines):
                 raise ValueError('aws_secret_access_key entry not well formed, '
                                  'e.g. aws_secret_access_key=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY')
             # remove any white space
-            profiles[profile_name]["aws_secret_access_key"] = tokens[1].strip()
+            profiles[profile_name]["aws_access_key_id"] = tokens[1].strip()
 
-        elif "aws_access_key_id" in line:
+        elif "aws_secret_access_key" in line:
             # extract the aws_access_key_id
             tokens = line.split("=")
             if len(tokens) != 2:
@@ -111,7 +111,7 @@ def load_profiles(cred_lines):
     # validate all profiles have correct entries, delete ones without
     for profile in profiles:
 
-        if "aws_access_key_id" not in profiles[profile] and "aws_secret_access_key" not in profiles[profile]:
+        if "aws_access_key_id" not in profiles[profile] or "aws_secret_access_key" not in profiles[profile]:
             print(profiles[profile])
             sys.stderr.write("Profile appears corrupt or password is invalid." + os.linesep)
             raise ValueError("ERROR: failed to load profile: " + profile)
@@ -179,7 +179,7 @@ def activate_keys(pass_phrase, profile):
             raise ValueError('Unable to find profile named, ' + profile)
 
     # set the environment variables
-    os.environ['AWS_ACCESS_KEY_ID'] = profiles[profile]["aws_secret_access_key"]
+    os.environ['AWS_ACCESS_KEY_ID'] = profiles[profile]["aws_access_key_id"]
     os.environ['AWS_SECRET_ACCESS_KEY'] = profiles[profile]["aws_secret_access_key"]
     os.environ['PS1'] = 'aws:' + profile + '> '
 
