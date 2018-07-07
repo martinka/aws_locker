@@ -5,24 +5,34 @@ program allows you to encrypt the ~/.aws/credentials file.
 
 Before you Start:
 =================
-It is always a good idea to backup you aws credentials someplace off line. This program will encrypt you credentials. If you forget the pass key there is no way to recover them. 
+It is always a good idea to backup you aws credentials someplace off line. This program will encrypt you credentials. If you forget the pass key there is no way to recover them.
 
 Running on Mac OS:
 ==================
 make sure requirements are loaded:
+```
     pip install -r resources.txt
+```
 
 encrypt the file
+```
     python aws_locker.py -e
+```
 
 enable the access key for working with the command line
-    python aws_locker.py 
+```
+    python aws_locker.py
+```
 
 enable the access key for a non default profile
+```
     python aws_locker.py -p <profile name>
+```
 
 decrypt the file - return the credential file to normal
+```
     python aws_locker.py -d
+```
 
 Running on Windows:
 ===================
@@ -44,6 +54,5 @@ Thank you to [darbym](https://github.com/darbym), [adbrowning](https://github.co
 Future Plans
 ============
 The following enchancements are planed for aws_locker
-  - support for command history and type ahead. possibly leverage the shell for this.
   - unit tests
   - builds for .app and .exe versions
