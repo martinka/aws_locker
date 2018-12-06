@@ -7,6 +7,7 @@ name = "pypi"
 
 [packages]
 pycrypto = "==2.6.1"
+requests = "*"
 
 [requires]
 python_version = "2.7"
