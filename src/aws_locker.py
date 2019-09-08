@@ -24,13 +24,20 @@ import subprocess
 import collections
 from Crypto.Protocol.KDF import PBKDF2
 from Crypto.Cipher import AES
+from Crypto.Hash import SHA256
 from Crypto.Util import Counter
 
 salt_size = 12
+sha256_size = 32
 
 credentials_file = "~/.aws/credentials"
 encrypted_path = "~/.aws/enc_credentials"
 
+class CorruptedFileError(Exception):
+    pass
+
+class DecryptError(Exception):
+    pass
 
 def convert_passphrase_to_key(salt, pass_phrase):
     return PBKDF2(pass_phrase, salt, dkLen=32)
@@ -43,18 +50,20 @@ def get_cred_file():
 def get_enc_cred_file():
     return os.path.expanduser(encrypted_path)
 
-
-def get_credentials(pass_phrase):
-    """
-    This function takes a pass_phrase and returns the credentials file as a list
-    :param pass_phrase: PassPhrase used to secure the credentials
-    :return: The lines of the credentials file as a list
-    """
+def read_enc_file(pass_phrase):
     # read the file
     filename = get_enc_cred_file()
     with open(filename, 'rb') as f:
+        clear_text_hash = f.read(sha256_size)
+        enc_text_hash = f.read(sha256_size)
         salt = f.read(salt_size)
         enc_cred_data = f.read()
+
+    # check the file has not been corrupted
+    encrypted_hash = SHA256.new()
+    encrypted_hash.update( enc_cred_data )
+    if encrypted_hash.digest() != enc_text_hash:
+       raise CorruptedFileError("encrypted data is corrupted")
 
     # get the key
     key = convert_passphrase_to_key(salt, pass_phrase)
@@ -63,9 +72,24 @@ def get_credentials(pass_phrase):
     ctr = Counter.new(128)
     cipher = AES.new(key, AES.MODE_CTR, counter=ctr)
     cred_data = cipher.decrypt(enc_cred_data)
+
+    # check clear text hash to make sure we decrypted correctly
+    clear_hash = SHA256.new()
+    clear_hash.update( cred_data )
+    if clear_hash.digest() != clear_text_hash:
+       raise DecryptError("decrypt failed, wrong password?")
+
+    return cred_data
+
+def get_credentials(pass_phrase):
+    """
+    This function takes a pass_phrase and returns the credentials file as a list
+    :param pass_phrase: PassPhrase used to secure the credentials
+    :return: The lines of the credentials file as a list
+    """
+    cred_data = read_enc_file(pass_phrase) 
     cred_lines = cred_data.splitlines()
     return cred_lines
-
 
 def load_profiles(cred_lines):
     """
@@ -131,21 +155,18 @@ def list_profiles(profiles):
     for profile in profiles:
         print("[" + str(profile_instance) + "] " + str(profile))
         profile_instance += 1
+    print("[" + str(profile_instance) + "] " + "exit")
 
 
-def activate_keys(pass_phrase, profile):
+def activate_keys(profiles, profile):
     """
     Unlocks the credentials file, loads all profiles, prompts the user for profile to choose,
     finds the requested profile, populates the required environment variables.
 
     :param pass_phrase:  pass phrase used for the encryption key
     :param profile: optional profile name to load
-    :return:
+    :return: true to continue false otherwise
     """
-    # convert the encrypted file to a list of strings
-    cred_lines = get_credentials(pass_phrase)
-    # convert the list of strings into a dictionary of profiles
-    profiles = load_profiles(cred_lines)
 
     if profile == "":
         list_profiles(profiles)
@@ -160,11 +181,13 @@ def activate_keys(pass_phrase, profile):
             try:
                 # is their selection a number
                 selection = int(selection)
-                if len(profiles) <= selection or selection < 0:
+                if len(profiles) < selection or selection < 0:
                     sys.stderr.write("ERROR: Not in the valid range" + os.linesep)
                     # reset their selection
                     selection = ""
                     raise ValueError()
+                elif selection == len(profiles):
+                    return True
                 else:
                     # selected our profile
                     profile = list(profiles)[selection]
@@ -188,12 +211,16 @@ def activate_keys(pass_phrase, profile):
                              stdin=sys.stdin, stdout=sys.stdout, 
                              stderr=sys.stderr)
     shell.wait() 
-
+    return False
 
 def encrypt_file(pass_phrase, in_filename, out_filename):
     # read the file
     with open(in_filename, 'rb') as in_file:
         cred_data = in_file.read()
+
+    #generate hash of plain text
+    clear_text_hash = SHA256.new()
+    clear_text_hash.update( cred_data )
 
     # get the key
     salt = os.urandom(salt_size)
@@ -203,7 +230,11 @@ def encrypt_file(pass_phrase, in_filename, out_filename):
     ctr = Counter.new(128)
     cipher = AES.new(key, AES.MODE_CTR, counter=ctr)
     enc_cred_data = cipher.encrypt(cred_data)
-    file_data = salt + enc_cred_data
+
+    #calculate encrypted hash
+    encrypted_hash = SHA256.new()
+    encrypted_hash.update( enc_cred_data )
+    file_data = clear_text_hash.digest() + encrypted_hash.digest() + salt + enc_cred_data
 
     # write the file
     with open(out_filename, 'wb') as out_file:
@@ -214,19 +245,8 @@ def encrypt_file(pass_phrase, in_filename, out_filename):
 
 
 def decrypt_file(pass_phrase, in_filename, out_filename):
-    # read the file
-    with open(in_filename, 'rb') as in_file:
-        salt = in_file.read(salt_size)
-        enc_cred_data = in_file.read()
-
-    # get the key
-    key = convert_passphrase_to_key(salt, pass_phrase)
-
-    # decrypt the data
-    ctr = Counter.new(128)
-    cipher = AES.new(key, AES.MODE_CTR, counter=ctr)
-    cred_data = cipher.decrypt(enc_cred_data)
-
+    cred_data = read_enc_file( pass_phrase )
+ 
     # write the file
     with open(out_filename, 'wb') as out_file:
         out_file.write(cred_data)
@@ -307,10 +327,33 @@ if __name__ == '__main__':
         profile_check()
         profile_name = sys.argv[2]
         print("Attempting to activate " + profile_name)
-        activate_keys(get_password(), profile_name)
+        pass_phrase = get_password()
+        cred_lines = get_credentials(pass_phrase)
+        # convert the list of strings into a dictionary of profiles
+        profiles = load_profiles(cred_lines)
+        # convert the list of strings into a dictionary of profiles
+        activate_keys(profiles, profile_name)
         print("Successfully deactivated " + profile_name + " profile" + os.linesep)
     else:
         print("Attempting to load default profile")
         profile_check()
-        activate_keys(get_password(), "")
-        print("Successfully deactivated default profile" + os.linesep)
+
+        # convert the encrypted file to a list of strings
+        done = False
+        while not done:
+            try:
+                pass_phrase = get_password()
+                cred_lines = get_credentials(pass_phrase)
+                done = True
+            except DecryptError as de:
+                print("Wrong Password try again!")
+            except CorruptedFileError as cfe:
+                print("encrypted file is corrupt, we can't use it!")
+                exit(-1)     
+
+        # convert the list of strings into a dictionary of profiles
+        profiles = load_profiles(cred_lines)
+        done = False
+        while not done:
+            done = activate_keys(profiles,"")
+            print("Successfully deactivated default profile" + os.linesep)
