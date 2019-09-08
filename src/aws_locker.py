@@ -52,7 +52,7 @@ def get_credentials(pass_phrase):
     """
     # read the file
     filename = get_enc_cred_file()
-    with open(filename, 'r') as f:
+    with open(filename, 'rb') as f:
         salt = f.read(salt_size)
         enc_cred_data = f.read()
 
@@ -77,27 +77,27 @@ def load_profiles(cred_lines):
     profiles = collections.OrderedDict()
     for line in cred_lines:
         # found new profile
-        if "[" in line and "]" in line:
+        if b"[" in line and b"]" in line:
             profile_name = line
-            profile_name = profile_name.replace("[", "")
-            profile_name = profile_name.replace("]", "")
-            profile_name = profile_name.strip()
+            profile_name = profile_name.replace(b"[", b"")
+            profile_name = profile_name.replace(b"]", b"")
+            profile_name = profile_name.strip().decode("utf-8")
             profiles[profile_name] = collections.OrderedDict()
-        elif "aws_access_key_id" in line:
-            tokens = line.split("=")
+        elif b"aws_access_key_id" in line:
+            tokens = line.split(b"=")
             if len(tokens) != 2:
                 raise ValueError('aws_secret_access_key entry not well formed, '
                                  'e.g. aws_secret_access_key=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY')
             # remove any white space
-            profiles[profile_name]["aws_access_key_id"] = tokens[1].strip()
+            profiles[profile_name]["aws_access_key_id"] = tokens[1].strip().decode("utf-8")
 
-        elif "aws_secret_access_key" in line:
+        elif b"aws_secret_access_key" in line:
             # extract the aws_access_key_id
-            tokens = line.split("=")
+            tokens = line.split(b"=")
             if len(tokens) != 2:
                 raise ValueError('aws_access_key_id entry not well formed, '
                                  'e.g. aws_access_key_id=AKIAIOSFODNN7EXAMPLE')
-            profiles[profile_name]["aws_secret_access_key"] = tokens[1].strip()
+            profiles[profile_name]["aws_secret_access_key"] = tokens[1].strip().decode("utf-8")
 
     # if no profiles are loaded perhaps not a valid file or the password was wrong
     if len(profiles) == 0:
@@ -129,7 +129,7 @@ def list_profiles(profiles):
     profile_instance = 0
     print("Available profiles are:")
     for profile in profiles:
-        print("[" + str(profile_instance) + "] " + profile)
+        print("[" + str(profile_instance) + "] " + str(profile))
         profile_instance += 1
 
 
@@ -167,7 +167,7 @@ def activate_keys(pass_phrase, profile):
                     raise ValueError()
                 else:
                     # selected our profile
-                    profile = profiles.keys()[selection]
+                    profile = list(profiles)[selection]
                     break
             except ValueError:
                 sys.stderr.write("ERROR: please enter a valid selection" + os.linesep)
@@ -192,7 +192,7 @@ def activate_keys(pass_phrase, profile):
 
 def encrypt_file(pass_phrase, in_filename, out_filename):
     # read the file
-    with open(in_filename, 'r') as in_file:
+    with open(in_filename, 'rb') as in_file:
         cred_data = in_file.read()
 
     # get the key
@@ -206,7 +206,7 @@ def encrypt_file(pass_phrase, in_filename, out_filename):
     file_data = salt + enc_cred_data
 
     # write the file
-    with open(out_filename, 'w') as out_file:
+    with open(out_filename, 'wb') as out_file:
         out_file.write(file_data)
 
     # remove the unencrypted file
@@ -215,7 +215,7 @@ def encrypt_file(pass_phrase, in_filename, out_filename):
 
 def decrypt_file(pass_phrase, in_filename, out_filename):
     # read the file
-    with open(in_filename, 'r') as in_file:
+    with open(in_filename, 'rb') as in_file:
         salt = in_file.read(salt_size)
         enc_cred_data = in_file.read()
 
@@ -228,7 +228,7 @@ def decrypt_file(pass_phrase, in_filename, out_filename):
     cred_data = cipher.decrypt(enc_cred_data)
 
     # write the file
-    with open(out_filename, 'w') as out_file:
+    with open(out_filename, 'wb') as out_file:
         out_file.write(cred_data)
 
     # remove encrypted file
@@ -252,7 +252,7 @@ def get_profile_selection():
     This function prompts the user for their profile selection and returns it
     :return: Profile name to use
     """
-    profile_number = raw_input("Enter profile number [default]>> ")
+    profile_number = input("Enter profile number [default]>> ")
 
     # strip newline of pass_phrase
     return profile_number.rstrip()
