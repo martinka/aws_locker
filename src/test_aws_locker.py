@@ -39,7 +39,7 @@ class TestAWSLocker(unittest.TestCase):
             os.unlink(self.out_file.name)
 
     def test_encryptfile(self):
-        self.in_file.write('SOME DATA TO ENCRYPT')
+        self.in_file.write(b'SOME DATA TO ENCRYPT')
         self.in_file.flush()
         aws_locker.encrypt_file('a passphrase', self.in_file.name, self.out_file.name)
         # verify input file is removed
@@ -48,4 +48,4 @@ class TestAWSLocker(unittest.TestCase):
         enc_data = self.out_file.read()
         self.assertIsNotNone(enc_data)
         self.assertGreater(len(enc_data), 0)
-        self.assertFalse('ENCRYPT' in enc_data)
+        self.assertFalse(b'ENCRYPT' in enc_data)

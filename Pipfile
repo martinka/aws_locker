@@ -6,8 +6,8 @@ name = "pypi"
 [dev-packages]
 
 [packages]
+pycryptodome = "*"
 pycrypto = "==2.6.1"
-requests = "*"
 
 [requires]
-python_version = "2.7"
+python_version = "3.7"
