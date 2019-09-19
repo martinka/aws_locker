@@ -46,6 +46,26 @@ Running on windows is a bit more complicated.
 
 This program makes use of the fact that aws cli will use environment variables for the access key id and access key secret.  The environment variables are not secure, however they are only available while the program is running.  This reduces the exposure of the access keys, however it is not a prefect solution.  It does protect your keys while not in use.  
 
+Running a docker container:
+===========================
+Install docker on your computer:
+* MacOS https://runnable.com/docker/install-docker-on-macos
+* Windows 10 https://runnable.com/docker/install-docker-on-windows-10
+* Linux https://runnable.com/docker/install-docker-on-linux
+
+Execute the build script
+```
+./build.sh
+```
+
+To run the container, execute the run script and follow the aws_locker prompts
+NOTE: if you already have a encrypted file in your ~/.aws directory it will be loaded 
+```
+./run.sh
+```
+
+
+
 Acknowledgements
 ================
 Thank you to [darbym](https://github.com/darbym), [adbrowning](https://github.com/adbrowning) and [rmuir](https://github.com/rmuir) for inspirtation and initial code review.
