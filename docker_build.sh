@@ -3,7 +3,6 @@
 # specify exact version used for reproducibility
 PIP_VERSION=9.0.3
 
-#ARTIFACTORY_PYPI="https://artifactory.programx60.com:443/ssg-generic-local"
 trap ': "*** BUILD FAILED ***" $BASH_SOURCE:$LINENO: error: "$BASH_COMMAND" returned $?' ERR
 set -eExuo pipefail
 
