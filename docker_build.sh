@@ -3,7 +3,6 @@
 # specify exact version used for reproducibility
 PIP_VERSION=9.0.3
 
-***REMOVED***
 trap ': "*** BUILD FAILED ***" $BASH_SOURCE:$LINENO: error: "$BASH_COMMAND" returned $?' ERR
 set -eExuo pipefail
 
