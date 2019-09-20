@@ -1,11 +1,9 @@
 # aws_locker
-python program for encrypting local aws access keys while allowing run time access
-
-program allows you to encrypt the ~/.aws/credentials file.
+python program for encrypting local aws access keys while allowing runtime access program allows you to encrypt the ~/.aws/credentials file.
 
 Before you Start:
 =================
-It is always a good idea to backup you aws credentials someplace off line. This program will encrypt you credentials. If you forget the pass key there is no way to recover them.
+It is always a good idea to backup your aws credentials some securely place off-line. This program will encrypt your credentials. If you forget the passphrase there is no way to recover them.
 
 Running on Mac OS:
 ==================
