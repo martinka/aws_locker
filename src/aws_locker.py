@@ -22,6 +22,7 @@ import sys
 import getpass
 import subprocess
 import collections
+import csv
 from Crypto.Protocol.KDF import PBKDF2
 from Crypto.Cipher import AES
 from Crypto.Hash import SHA256
@@ -294,9 +295,35 @@ def get_password():
     # Return the collected pass phrase
     return pass_phrase_in
 
+def read_csv_file(file_name):
+    """
+    This function reads an AWS Access key file and returns the keys
+    this assumes the file has a header row and then 1 row of keys
+    :return dict of key id and secret key
+    """
+    to_ret = {}
+    row_count = 0
+    with open( file_name) as csv_cred_file:
+        read_csv_cred = csv.reader(csv_cred_file)
+        for row in read_csv_cred:
+            to_ret['aws_access_key_id'] = row[0]
+            to_ret['aws_secret_access_key'] = row[1]    
+            row_count += 1
+    if row_count != 2:
+        sys.stderr.write("could not read credential.csv file")
+        exit(-1) 
+    return to_ret 
+
+def add_creds( new_creds, profile_name, file_name ):
+    with open( file_name, "a") as cred_file:
+        cred_file.write('\n[' + profile_name + ']\n')
+        cred_file.write('aws_access_key_id=' + new_creds['aws_access_key_id'])
+        cred_file.write('\n')
+        cred_file.write('aws_secret_access_key=' +
+                        new_creds['aws_secret_access_key'] + '\n')
 
 if __name__ == '__main__':
-    usage = "Usage: aws_locker [-e,-d,-l,-p profile]" + os.linesep + "" \
+    usage = "Usage: aws_locker [-e,-d,-l,-p profile,-a cred.csv name]" + os.linesep + "" \
             "If no operands are given, a menu will prompt for which profile to use." + os.linesep + "" \
             "The following options are available:" + os.linesep + os.linesep + "" \
             "-h    prints this message" + os.linesep + "" \
@@ -305,9 +332,10 @@ if __name__ == '__main__':
             "-d    decrypt the " + encrypted_path + " file and write information to " + credentials_file \
             + os.linesep + "" \
             "-l    list all profile_names stored in the " + encrypted_path + " file " + os.linesep + "" \
-            "-p    activate a specific profile_name from the " + encrypted_path + " file " + os.linesep
+            "-p    activate a specific profile_name from the " + encrypted_path + " file " + os.linesep + "" \
+            "-a    add creditials in cred.csv file as profile name " + os.linesep 
 
-    if len(sys.argv) < 1 or len(sys.argv) > 3:
+    if len(sys.argv) < 1 or len(sys.argv) > 4:
         sys.stderr.write(usage)
         exit()
 
@@ -334,6 +362,13 @@ if __name__ == '__main__':
         # convert the list of strings into a dictionary of profiles
         activate_keys(profiles, profile_name)
         print("Successfully deactivated " + profile_name + " profile" + os.linesep)
+    elif num_args == 4 and sys.argv[1] == '-a':
+        new_creds = read_csv_file( sys.argv[2] )
+        pass_phrase = get_password()
+        decrypt_file(get_password(), get_enc_cred_file(), get_cred_file())
+        add_creds( new_creds, sys.argv[3], get_cred_file())
+        encrypt_file(pass_phrase, get_cred_file(), get_enc_cred_file())
+        print("Successfully added keys")
     else:
         print("Attempting to load default profile")
         profile_check()
